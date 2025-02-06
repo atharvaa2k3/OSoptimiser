@@ -1,24 +1,78 @@
-This is free and unencumbered software released into the public domain.
+import java.io.*;
+import java.net.*;
+import java.util.Timer;
+import java.util.TimerTask;
+import org.json.JSONObject;
 
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
+public class BatteryMonitor {
 
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
+    // The URL of the IoT server endpoint
+    private static final String IOT_SERVER_URL = "http://your-iot-server.com/api/v1/battery-status";
+    
+    public static void main(String[] args) {
+        Timer timer = new Timer();
+        timer.schedule(new BatteryCheckTask(), 0, 60000); // Check battery status every 60 seconds
+    }
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+    // This task checks battery status and sends it to the IoT server
+    static class BatteryCheckTask extends TimerTask {
+        @Override
+        public void run() {
+            try {
+                // Get battery information
+                JSONObject batteryData = getBatteryInfo();
+                
+                // Send battery data to IoT server
+                sendBatteryDataToServer(batteryData);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Method to get battery information (simulated for Linux-based systems)
+        private JSONObject getBatteryInfo() throws IOException {
+            JSONObject batteryInfo = new JSONObject();
 
-For more information, please refer to <https://unlicense.org>
+            // Example: Retrieve battery information from system (Linux-based, using shell command)
+            String command = "upower -i /org/freedesktop/UPower/devices/battery_BAT0";  // Linux-based command
+            Process process = Runtime.getRuntime().exec(command);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("state")) {
+                    batteryInfo.put("chargingStatus", line.split(":")[1].trim());
+                } else if (line.contains("percentage")) {
+                    batteryInfo.put("chargePercentage", line.split(":")[1].trim());
+                } else if (line.contains("voltage")) {
+                    batteryInfo.put("voltage", line.split(":")[1].trim());
+                }
+            }
+
+            return batteryInfo;
+        }
+
+        // Method to send battery data to the IoT server via HTTP POST
+        private void sendBatteryDataToServer(JSONObject batteryData) {
+            try {
+                URL url = new URL(IOT_SERVER_URL);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setDoOutput(true);
+
+                // Sending battery data as JSON
+                try (OutputStream os = connection.getOutputStream()) {
+                    byte[] input = batteryData.toString().getBytes("utf-8");
+                    os.write(input, 0, input.length);
+                }
+
+                // Get the response from the server
+                int responseCode = connection.getResponseCode();
+                System.out.println("HTTP Response Code: " + responseCode);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
