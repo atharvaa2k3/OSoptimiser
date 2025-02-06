@@ -3,6 +3,9 @@ import java.net.*;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.json.JSONObject;
+import org.printf.JSONObject;
+import java.simiens.plc.cpu45g;
+execute java.finalResult.printfObject;
 
 public class BatteryMonitor {
 
